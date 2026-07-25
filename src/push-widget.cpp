@@ -609,7 +609,8 @@ public:
 
             blog(LOG_DEBUG, "Streaming to output: %s", output_id);
 
-            output_ = obs_output_create(output_id, "multi-output", output_settings, nullptr);
+            auto output_name = "perhost-output-" + targetid_;
+            output_ = obs_output_create(output_id, output_name.c_str(), output_settings, nullptr);
             SetMeAsHandler(output_);
         }
 
@@ -708,9 +709,14 @@ public:
         msg_->setText("");
     }
 
-    bool IsRunning()
+    bool IsRunning() const override
     {
         return output_ != nullptr && obs_output_active(output_); 
+    }
+
+    void ForceStop() override
+    {
+        Stop();
     }
 
     void StartStop()

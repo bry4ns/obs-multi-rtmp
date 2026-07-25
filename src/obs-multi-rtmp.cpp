@@ -9,6 +9,7 @@
 #include "plugin-support.h"
 
 #include "output-config.h"
+#include "perhost-agent.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -30,6 +31,8 @@ public:
 
     QThread* uiThread_ = nullptr;
 } s_service;
+
+static PerHostAgent* s_perHostAgent = nullptr;
 
 
 GlobalService& GetGlobalService() {
@@ -449,39 +452,28 @@ bool obs_module_load()
     auto mainwin = (QMainWindow*)obs_frontend_get_main_window();
     if (mainwin == nullptr)
         return false;
+
     QMetaObject::invokeMethod(mainwin, []() {
         s_service.uiThread_ = QThread::currentThread();
     });
 
-    auto dock = new MultiOutputWidget();
-    dock->setObjectName("obs-multi-rtmp-dock");
-    if (!obs_frontend_add_dock_by_id("obs-multi-rtmp-dock", obs_module_text("Title"), dock))
-    {
-        delete dock;
-        return false;
-    }
-
-    blog(LOG_INFO, TAG "version: %s by SoraYuki https://github.com/sorayuki/obs-multi-rtmp/", PLUGIN_VERSION);
+    s_perHostAgent = new PerHostAgent(mainwin);
+    blog(LOG_INFO, TAG "PerHost native output agent enabled");
 
     obs_frontend_add_event_callback(
-        [](enum obs_frontend_event event, void *private_data) {
-            auto dock = static_cast<MultiOutputWidget*>(private_data);
-
-            for(auto x: dock->GetAllPushWidgets())
-                x->OnOBSEvent(event);
-
-            if (event == obs_frontend_event::OBS_FRONTEND_EVENT_EXIT)
-            {   
-                dock->SaveConfig();
-            }
-            else if (event == obs_frontend_event::OBS_FRONTEND_EVENT_PROFILE_CHANGED)
-            {
-                dock->LoadConfig();
-            }
-        }, dock
+        [](enum obs_frontend_event event, void*) {
+            if (event == obs_frontend_event::OBS_FRONTEND_EVENT_PROFILE_CHANGED && s_perHostAgent)
+                s_perHostAgent->OnOBSProfileChanged();
+        }, nullptr
     );
 
     return true;
+}
+
+void obs_module_unload()
+{
+    delete s_perHostAgent;
+    s_perHostAgent = nullptr;
 }
 
 const char *obs_module_description(void)
