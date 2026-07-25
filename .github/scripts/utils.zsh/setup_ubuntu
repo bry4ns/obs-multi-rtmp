@@ -35,14 +35,15 @@ if (( ! (${skips[(Ie)all]} + ${skips[(Ie)deps]}) )) {
     sudo apt-get install ${apt_args} gcc-${${target##*-}//_/-}-linux-gnu g++-${${target##*-}//_/-}-linux-gnu
   }
 
-  sudo add-apt-repository --yes ppa:obsproject/obs-studio
-  sudo apt update
-
   sudo apt-get install ${apt_args} \
     build-essential \
     libgles2-mesa-dev \
-    libsimde-dev \
-    obs-studio
+    libsimde-dev
+
+  # Keep the plugin ABI aligned with the Cloud OBS image.
+  curl --fail --location --output /tmp/obs-studio.deb \
+    https://github.com/obsproject/obs-studio/releases/download/31.1.2/obs-studio_31.1.2-0obsproject1.noble_amd64.deb
+  sudo apt-get install ${apt_args} /tmp/obs-studio.deb
 
   local -a _qt_packages=()
 
