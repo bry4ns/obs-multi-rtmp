@@ -275,6 +275,10 @@ class PushWidgetImpl : public PushWidget, public IOBSOutputEventHanlder
         auto config_id = config_->videoConfig.value_or(OBS_STREAMING_ENC_PLACEHOLDER);
         if (config_id == "" || config_id == OBS_STREAMING_ENC_PLACEHOLDER) {
             OBSOutputAutoRelease stream_output = obs_frontend_get_streaming_output();
+            if (!stream_output) {
+                blog(LOG_WARNING, TAG "Main streaming output is unavailable; cannot share its video encoder.");
+                return nullptr;
+            }
             OBSEncoder enc = obs_output_get_video_encoder(stream_output);
             using_main_video_encoder_ = true;
             return enc.Get();
@@ -317,6 +321,10 @@ class PushWidgetImpl : public PushWidget, public IOBSOutputEventHanlder
         auto config_id = config_->audioConfig.value_or(OBS_STREAMING_ENC_PLACEHOLDER);
         if (config_id == "" || config_id == OBS_STREAMING_ENC_PLACEHOLDER) {
             OBSOutputAutoRelease stream_output = obs_frontend_get_streaming_output();
+            if (!stream_output) {
+                blog(LOG_WARNING, TAG "Main streaming output is unavailable; cannot share its audio encoder.");
+                return nullptr;
+            }
             OBSEncoder enc = obs_output_get_audio_encoder(stream_output, 0);
             using_main_audio_encoder_ = true;
             return enc.Get();
@@ -365,13 +373,6 @@ class PushWidgetImpl : public PushWidget, public IOBSOutputEventHanlder
 
         auto& global = GlobalMultiOutputConfig();
 
-        // main output
-        OBSOutput mainOutput = obs_frontend_get_streaming_output();
-        OBSOutput recordingOutput =  obs_frontend_get_recording_output();
-
-        obs_output_release(mainOutput);
-        obs_output_release(recordingOutput);
-
         OBSEncoder venc = GetVideoEncoder();
         OBSEncoder aenc = GetAudioEncoder();
 
@@ -394,17 +395,8 @@ class PushWidgetImpl : public PushWidget, public IOBSOutputEventHanlder
         }
 
         if (!aenc || !venc) {
-            // If we don't have a valid encoder, we're likely using a special encoder type that
-            // needs to be started by the user (i.e. start streaming or start recording)
             ReleaseOutputEncoder();
-
-            auto msgbox = new QMessageBox(QMessageBox::Icon::Critical, 
-                obs_module_text("Notice.Title"), 
-                obs_module_text("Notice.GetEncoder"),
-                QMessageBox::StandardButton::Ok,
-                this
-                );
-            msgbox->exec();
+            blog(LOG_WARNING, TAG "Cannot start native output before the main OBS stream encoder is ready.");
             return false;
         }
 
