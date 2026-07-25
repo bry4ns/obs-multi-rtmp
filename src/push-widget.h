@@ -1,5 +1,7 @@
 #include "pch.h"
 
+#pragma once
+
 class PushWidget : virtual public QWidget {
 public:
     virtual ~PushWidget() {}

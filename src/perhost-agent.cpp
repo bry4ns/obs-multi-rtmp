@@ -344,7 +344,7 @@ void PerHostAgent::HandleMessage(const QString& message)
 void PerHostAgent::OnOBSProfileChanged()
 {
     outputs_.ResetForProfileChange();
-    backendUrl_ = {};
+    backendUrl_ = QUrl();
     streamId_.clear();
     socket_.close();
     SendStatus();
